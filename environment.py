@@ -32,7 +32,7 @@ class environment:
         # Phase 2: MIRs set as initial allocation
         self.MIRs = self.allocated_bandwidth[:]
 
-        # State: [MIRs, Requested Bandwidths, Allocated Bandwidths, Time of Day]
+        # State: [MIRs, Requested Bandwidths, Allocated Bandwidths]
         self.state = self._get_state()
         return self.state
 
@@ -124,14 +124,12 @@ class environment:
 
         # Calculate the average allocation ratio
         average_allocation_ratio = self.calculate_allocation_ratio()
-        print(f"Time Step: {self.time_step}, Average Allocation Ratio: {average_allocation_ratio}, rewards: {reward}")
         
-        current_requested_bandwidth = self.requested_bandwidth
         # Update the requested bandwidths for the next step
         if not done:
             self.requested_bandwidth = self._get_requested_bandwidth(self.time_step)
 
-        return new_state, reward, done, total_allocated, current_requested_bandwidth, average_allocation_ratio  # Returning
+        return new_state, reward, done, average_allocation_ratio  # Returning
 
 
     def allocate_bandwidth(self, user_index, request_bandwidth, MIR):
@@ -140,11 +138,11 @@ class environment:
 
         Parameters:
         - user_index: The user index to allocate bandwidth for.
-        - request_bandwidth: The requested bandwidth for the user.
-        - MIR: The maximum information rate for the user.
+        - request_bandwidth: The current requested bandwidth for the user.
+        - MIR: The current maximum information rate for the user.
 
         Returns:
-        - final_allocation: The final allocated bandwidth for the user
+        - final_allocation: The final allocated bandwidth for the user (updated allocated bandwidth)
         """
         # Initial allocated bandwidth from Phase 1
         initial_allocation = self.allocated_bandwidth[user_index]
@@ -158,17 +156,21 @@ class environment:
         # Ensure that the total allocated bandwidth does not exceed 10,000 Kbps
         total_allocated = sum(self.allocated_bandwidth) + potential_allocation - initial_allocation
         # If the total allocated bandwidth exceeds the total bandwidth, return the allocated bandwidth instead
-        if total_allocated > self.total_bandwidth :
+        if total_allocated > self.total_bandwidth or potential_allocation > MIR:
             return self.allocated_bandwidth[user_index]
         else :
-            # Update the allocated bandwidth for the user
-            self.allocated_bandwidth[user_index] = potential_allocation
-            return potential_allocation
+            if request_bandwidth >= MIR :
+                # Update the allocated bandwidth for the user
+                self.allocated_bandwidth[user_index] = initial_allocation + (MIR - initial_allocation)
+            else :
+                self.allocated_bandwidth[user_index] = request_bandwidth
+        return potential_allocation
 
 
     def calculate_allocation_ratio(self):
         """
         Calculate the average allocation ratio across all users.
+        """
         """
         total_ratio = 0
         for i in range(self.num_users):
@@ -183,7 +185,17 @@ class environment:
         sum_bandwidth_requested = sum(self.requested_bandwidth)
         average_allocation_ratio = total_ratio / sum_bandwidth_requested
         return average_allocation_ratio
-
+        """
+        allocation_ratio = [0] * self.num_users
+        for i in range(self.num_users) :
+            if self.requested_bandwidth[i] >= self.MIRs[i] :
+                allocation_ratio[i] = self.MIRs[i] / self.total_bandwidth
+            else :
+                if self.requested_bandwidth[i] == 0 :
+                    allocation_ratio[i] = self.allocated_bandwidth[i] / self.CIR
+                else :
+                    allocation_ratio[i] = self.allocated_bandwidth[i] / self.requested_bandwidth[i]
+        return np.sum(allocation_ratio)
 
     def calculate_rewards(self):
         R_efficiency = 0.0
@@ -198,7 +210,10 @@ class environment:
             if self.requested_bandwidth[i] < self.MIRs[i]:
                 R_efficiency += 1
             elif self.allocated_bandwidth[i] >= self.MIRs[i]:
-                R_efficiency += self.MIRs[i] / self.requested_bandwidth[i]
+                if self.requested_bandwidth[i] == 0 :
+                    R_efficiency += self.allocated_bandwidth[i] / self.CIR
+                else :
+                    R_efficiency += self.MIRs[i] / self.requested_bandwidth[i]
 
             # Detect abusive behavior
             if self.requested_bandwidth[i] > self.MIRs[i] * (1 + theta):
