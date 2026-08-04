@@ -1,0 +1,56 @@
+# =========================
+# Python & Bytecode
+# =========================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# =========================
+# Virtual Environments
+# =========================
+venv/
+env/
+.env
+pip-log.txt
+pip-delete-this-directory.txt
+
+# =========================
+# Datasets & Data Files
+# =========================
+*.csv
+*.dat
+train_data.csv
+test_data.csv
+
+# =========================
+# Saved Models & Checkpoints
+# =========================
+*.zip
+*.pt
+*.pth
+ppo_lstm_bandwidth_allocator.zip
+
+# =========================
+# Generated Outputs & Plots
+# =========================
+*.png
+*.jpg
+*.pdf
+evaluation_bandwidth_plot.png
+
+# =========================
+# IDEs & OS Files
+# =========================
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# =========================
+# Caches & Logs
+# =========================
+.pytest_cache/
+*.log
