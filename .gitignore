@@ -1,3 +1,76 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+
+# Virtual environments
+venv/
+env/
+.venv/
+ENV/
+venv.bak/
+
+# Pyenv
+.python-version
+
+# IDEs and editors
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Test and coverage
+.pytest_cache/
+.tox/
+.nox/
+.coverage
+htmlcov/
+
+# Caches
+.mypy_cache/
+.cache/
+
+# Jupyter
+.ipynb_checkpoints
+
+# Logs and databases
+*.log
+*.sqlite3
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Model outputs, large artifacts, and experiments
+best_model/
+checkpoints/
+tensorboard/
+models/
+*.ckpt
+*.h5
+*.pt
+*.pth
+
+# Environment files
+.env
+.env.*
+
+# Build artifacts
+*.o
+*.out
+
+# Keep these important project files tracked (README, code, data, images, docs)
+# (The entries above ignore common unwanted files; the following explicit keeps are
+# left out because they're not ignored elsewhere: README.md, requirements.txt,
+# Python source files, images, and data files like *.csv, *.npz, etc.)
 # =========================
 # Python & Bytecode
 # =========================

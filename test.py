@@ -1,108 +1,254 @@
-import pandas as pd
+from __future__ import annotations
+
+import os
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
+
 from stable_baselines3 import PPO
+from stable_baselines3.common.vec_env import DummyVecEnv
+
 from environment import BandwidthAllocationEnv
-from train import LSTMDemandForecaster 
 
 
-def load_dataset(file_path: str) -> pd.DataFrame:
+DATA_PATH = "test_data.csv"
+MODEL_PATH = "ppo_lstm_bandwidth_allocator"
+WINDOW_SIZE = 5
+
+
+def load_data(path):
+    if not os.path.exists(path):
+        raise FileNotFoundError(
+            f"Missing {path}. Put test_data.csv in the project root."
+        )
+
     try:
-        df = pd.read_csv(file_path, sep=None, engine='python')
+        df = pd.read_csv(path, sep=None, engine="python")
     except Exception:
-        df = pd.read_csv(file_path, sep=';')
-        
-    if 'Date' in df.columns:
-        df['Date'] = pd.to_datetime(df['Date'], dayfirst=True)
-    else:
-        raise KeyError(f"Could not locate 'Date' column in {file_path}. Columns found: {list(df.columns)}")
-        
+        df = pd.read_csv(path, sep=";")
+
+    if df.empty:
+        raise ValueError(f"{path} is empty.")
     return df
 
 
-def evaluate_agent(data_path: str = 'test_data.csv', model_path: str = 'ppo_lstm_bandwidth_allocator'):
-    print(f"Loading test data from {data_path}...")
-    df = load_dataset(data_path)
-    
-    env = BandwidthAllocationEnv(df=df, num_users=10, window_size=5)
-    
-    print(f"Loading saved model weights from {model_path}...")
-    model = PPO.load(model_path, env=env)
-    
-    obs, info = env.reset()
+def main():
+    print(f"Loading test data from {DATA_PATH}...")
+
+    df = load_data(DATA_PATH)
+
+    model_file = MODEL_PATH
+    if not model_file.endswith(".zip"):
+        model_file += ".zip"
+
+    if not os.path.exists(model_file):
+        raise FileNotFoundError(
+            f"Missing model: {model_file}. Run train.py first."
+        )
+
+    print(f"Loading model from {MODEL_PATH}...")
+
+    raw_env = BandwidthAllocationEnv(
+        df,
+        window_size=WINDOW_SIZE,
+        deterministic_shield=True,
+    )
+    env = DummyVecEnv([
+        lambda: BandwidthAllocationEnv(
+            df,
+            window_size=WINDOW_SIZE,
+            deterministic_shield=True,
+        )
+    ])
+
+    model = PPO.load(MODEL_PATH, env=env)
+
+    obs = env.reset()
+
+    allocation_ratios = []
+    total_allocations = []
+    abuse_scores = []
+    abuse_counters = []
+    rewards = []
+    over_penalties = []
+    abusive_penalties = []
+    capacity_violations = []
+
+    all_allocated = []
+    all_requests = []
+    all_mirs = []
+    all_phase1 = []
+
     done = False
-    
-    total_reward = 0.0
-    ratios_history = []
-    abuse_history = []
-    user_0_requested = []
-    user_0_allocated = []
-    
-    step_count = 0
-    
-    print("\nRunning Evaluation Loop...")
+
+    print()
+    print("Running evaluation...")
+
     while not done:
-        action, _states = model.predict(obs, deterministic=True)
-        
-        # Track User 0 demand vs allocated capacity
-        current_time = env.timestamps[env.current_step]
-        step_df = env.df[env.df['Date'] == current_time]
-        reqs = step_df['BW_REQUESTED'].values[:env.num_users]
-        if len(reqs) < env.num_users:
-            reqs = np.pad(reqs, (0, env.num_users - len(reqs)))
-            
-        phase1_alloc = np.minimum(reqs, env.cir_max)
-        rem_cap = max(0.0, env.total_capacity - np.sum(phase1_alloc))
-        
-        exp_a = np.exp(action - np.max(action))
-        alpha = exp_a / exp_a.sum()
-        mirs = phase1_alloc + (alpha * rem_cap)
-        actual_allocs = np.minimum(reqs, mirs)
-        
-        user_0_requested.append(reqs[0])
-        user_0_allocated.append(actual_allocs[0])
-        
-        # Advance environment
-        obs, reward, terminated, truncated, info = env.step(action)
-        done = terminated or truncated
-        
-        # Log metric values from info dict
-        total_reward += reward
-        ratios_history.append(info['efficiency_ratio'])
-        abuse_history.append(info['abuse_score'])
-        step_count += 1
+        action, _ = model.predict(obs, deterministic=True)
+        obs, reward, dones, infos = env.step(action)
 
-    # Final Score Summary
-    mean_ratio = np.mean(ratios_history) * 100.0
-    total_abuse = np.sum(abuse_history)
+        info = infos[0]
+        done = bool(dones[0])
 
-    print("\n" + "=" * 55)
-    print("           HACKATHON EVALUATION METRICS SUMMARY")
-    print("=" * 55)
-    print(f" Total Steps Evaluated       : {step_count}")
-    print(f" Mean Allocation Ratio (R)  : {mean_ratio:.2f}%  <-- YOUR RATIO")
-    print(f" Total Abuse Score (S_total): {total_abuse:.0f}")
-    print(f" Cumulative Episode Reward  : {total_reward:.2f}")
-    print("=" * 55)
+        allocation_ratios.append(float(info["efficiency_ratio"]))
+        total_allocations.append(float(info["total_allocation"]))
+        abuse_scores.append(int(info["total_abuse_score"]))
+        abuse_counters.append(info["abuse_counters"].copy())
+        rewards.append(float(reward[0]))
+        over_penalties.append(float(info["over_penalty"]))
+        abusive_penalties.append(float(info["abusive_penalty"]))
+        capacity_violations.append(float(info["capacity_violation"]))
 
-    plot_results(user_0_requested, user_0_allocated)
+        all_allocated.append(info["allocated"].copy())
+        all_requests.append(info["requests"].copy())
+        all_mirs.append(info["mir"].copy())
+        all_phase1.append(info["phase1_allocation"].copy())
 
+    env.close()
 
-def plot_results(requested, allocated, num_steps: int = 250):
-    plt.figure(figsize=(14, 6))
-    plt.plot(requested[:num_steps], label='Requested Bandwidth (Kbps)', color='#d9534f', linestyle='--', linewidth=1.5)
-    plt.plot(allocated[:num_steps], label='Allocated Bandwidth (Kbps)', color='#0275d8', linewidth=2.0)
-    
-    plt.title(f'PPO-LSTM Preemptive Demand Matching (First {num_steps} Timesteps)', fontsize=14, fontweight='bold')
-    plt.xlabel('Timestep Index', fontsize=12)
-    plt.ylabel('Bandwidth (Kbps)', fontsize=12)
-    plt.grid(True, linestyle=':', alpha=0.6)
-    plt.legend(loc='upper right', fontsize=11)
-    
+    allocation_ratios = np.asarray(allocation_ratios)
+    total_allocations = np.asarray(total_allocations)
+    abuse_scores = np.asarray(abuse_scores)
+    rewards = np.asarray(rewards)
+    over_penalties = np.asarray(over_penalties)
+    abusive_penalties = np.asarray(abusive_penalties)
+    capacity_violations = np.asarray(capacity_violations)
+
+    allocated = np.asarray(all_allocated)
+    requests = np.asarray(all_requests)
+    mirs = np.asarray(all_mirs)
+    phase1 = np.asarray(all_phase1)
+    counters = np.asarray(abuse_counters)
+
+    T = len(allocation_ratios)
+    N = raw_env.num_users
+
+    mean_allocation_ratio = float(allocation_ratios.mean())
+    total_abuse_score = int(abuse_scores[-1]) if T else 0
+    zero_abuse_steps = int(np.sum(abuse_scores == 0))
+    mean_total_allocation = float(total_allocations.mean())
+    max_total_allocation = float(total_allocations.max())
+    capacity_violation_count = int(np.sum(capacity_violations > 1e-8))
+
+    # Official request-normalized metric:
+    # r_i,t = MIR/request when request >= MIR;
+    #         1 otherwise.
+    # We use final allocated bandwidth, which is equal to the request
+    # whenever the request is below MIR.
+    safe_request = np.where(requests > 0, requests, 1.0)
+    official_ratios = np.where(
+        requests <= 0,
+        1.0,
+        np.minimum(1.0, allocated / safe_request),
+    )
+    official_mean = float(official_ratios.mean())
+
+    # Hard checks.
+    demand_upper_bound_pass = bool(np.all(allocated <= requests + 1e-7))
+    capacity_pass = bool(np.all(total_allocations <= 10_000.0 + 1e-7))
+
+    # Phase 1 CIR rule:
+    # request >= 1000 -> at least 1000 allocated in Phase 1;
+    # request < 1000 -> exact request.
+    expected_phase1 = np.minimum(requests, 1000.0)
+    cir_pass = bool(np.all(np.abs(phase1 - expected_phase1) <= 1e-7))
+
+    print()
+    print("=" * 65)
+    print("          V3 HYBRID PPO-LSTM + OR EVALUATION")
+    print("=" * 65)
+    print(f"Users Evaluated             : {N}")
+    print(f"Time Steps Evaluated        : {T}")
+    print(f"Mean Allocation Ratio       : {official_mean * 100:.2f}%")
+    print(f"Total Abuse Score           : {total_abuse_score}")
+    print(f"Zero-Abuse Timesteps        : {zero_abuse_steps}/{T}")
+    print(f"Mean Total Allocation       : {mean_total_allocation:.2f} Kbps")
+    print(f"Maximum Total Allocation    : {max_total_allocation:.2f} Kbps")
+    print(f"Capacity Violations         : {capacity_violation_count}")
+    print(f"Cumulative Reward           : {rewards.sum():.6f}")
+    print(f"Mean Over Penalty           : {over_penalties.mean():.8f}")
+    print(f"Mean Abusive Penalty        : {abusive_penalties.mean():.8f}")
+    print("=" * 65)
+
+    print()
+    print("Running hard constraint checks...")
+    print(
+        f"Capacity constraint : {'PASS' if capacity_pass else 'FAIL'}"
+    )
+    print(
+        f"Demand upper bound  : {'PASS' if demand_upper_bound_pass else 'FAIL'}"
+    )
+    print(
+        f"CIR guarantee       : {'PASS' if cir_pass else 'FAIL'}"
+    )
+
+    # Diagnostics useful for determining whether abuse is structurally
+    # difficult or caused by poor allocation decisions.
+    phase1_remaining = 10_000.0 - phase1.sum(axis=1)
+    target_mir = requests / 1.2
+    rescue_gap = np.maximum(0.0, target_mir - np.maximum(1000.0, phase1))
+    infeasible_rescue = rescue_gap.sum(axis=1) > phase1_remaining + 1e-7
+
+    print()
+    print("Feasibility diagnostics")
+    print("-" * 65)
+    print(
+        f"Timesteps with mathematically insufficient residual "
+        f"bandwidth for full 1.2x rescue : "
+        f"{int(infeasible_rescue.sum())}/{T}"
+    )
+    print(
+        f"Mean residual bandwidth after Phase 1 : "
+        f"{phase1_remaining.mean():.2f} Kbps"
+    )
+    print(
+        f"Maximum rescue gap                   : "
+        f"{rescue_gap.sum(axis=1).max():.2f} Kbps"
+    )
+
+    # Plot 1: total capacity / allocation.
+    x = np.arange(T)
+
+    plt.figure(figsize=(12, 5))
+    plt.plot(x, total_allocations, label="Total allocated")
+    plt.axhline(10_000, linestyle="--", label="Capacity")
+    plt.xlabel("Time step")
+    plt.ylabel("Bandwidth (Kbps)")
+    plt.title("Total Bandwidth Allocation")
+    plt.legend()
     plt.tight_layout()
-    plt.savefig('evaluation_bandwidth_plot.png', dpi=300)
-    print("\nPlot saved as 'evaluation_bandwidth_plot.png'.")
-    plt.show()
+    plt.savefig("evaluation_bandwidth_plot.png", dpi=150)
+    plt.close()
+    print("\nBandwidth plot saved as 'evaluation_bandwidth_plot.png'.")
+
+    # Plot 2: abuse counters.
+    plt.figure(figsize=(12, 5))
+    for i in range(N):
+        plt.plot(x, counters[:, i], label=f"User {i + 1}")
+    plt.axhline(3, linestyle="--", label="Abuse threshold")
+    plt.xlabel("Time step")
+    plt.ylabel("Consecutive abusive steps")
+    plt.title("Abuse Counters")
+    plt.legend(ncol=2)
+    plt.tight_layout()
+    plt.savefig("abuse_counter_plot.png", dpi=150)
+    plt.close()
+    print("Abuse counter plot saved as 'abuse_counter_plot.png'.")
+
+    # Plot 3: mean request satisfaction.
+    plt.figure(figsize=(12, 5))
+    plt.plot(x, official_ratios.mean(axis=1))
+    plt.axhline(0.95, linestyle="--", label="95% target")
+    plt.xlabel("Time step")
+    plt.ylabel("Allocation ratio")
+    plt.title("Mean Allocation Ratio Over Time")
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig("allocation_ratio_plot.png", dpi=150)
+    plt.close()
+    print("Allocation-ratio plot saved as 'allocation_ratio_plot.png'.")
+
 
 if __name__ == "__main__":
-    evaluate_agent()
+    main()

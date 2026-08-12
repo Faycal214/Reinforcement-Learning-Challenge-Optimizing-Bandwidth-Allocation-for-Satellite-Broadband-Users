@@ -3,3 +3,5 @@ matplotlib
 stable_baselines3
 gymnasium
 torch
+tqdm
+rich
