@@ -1,7 +1,7 @@
 # Hacker Guide
 The DevFest Algiers hackathon is primarily associated with university students from different technical backgrounds: programmers, ethical hackers, and software coders. It is a place where like-minded people come together to "hack" and craft realistic technical solutions.
 
-The goal of this year’s edition of Devfest Algiers Hackathon is to come up with a solution related to the theme of the edition during the event and to create functional software products by the end of the event.
+The goal of this year's edition of Devfest Algiers Hackathon is to come up with a solution related to the theme of the edition during the event and to create functional software products by the end of the event.
 
 The hackathon has two phases, where the online lasts for 2 days, and the onsite phase for further 2 days to the teams that qualify. The hackathon also includes a prize for the winning teams.
 # First challenge: **Reinforcement Learning Challenge: Optimizing Bandwidth Allocation for Satellite Broadband Users**
@@ -34,8 +34,8 @@ The **primary goal** is to **maximize the Average Allocation Ratio across all us
 
 3. **User-Specific Maximum Information Rate (MIR):**
    - The RL agent adjusts the MIRs for each user, which should be:
-     - **MIR $_{i}$ ≥ CIR (1000 Kbps)**
-     - **MIR $_{i}$ ≤ Remaining Bandwidth**
+     - $MIR_{i} \geq CIR (1000 \text{ Kbps})$
+     - $MIR_{i} \leq \text{Remaining Bandwidth}$
 
 4. **Sum of MIRs for all users:**
    - $\sum_{i=1}^{N} \text{MIR}_i \leq \text{Remaining Bandwidth}$
@@ -94,7 +94,7 @@ At each time step, we suggest the state includes:
 
 #### **Action Space**
 
-- **Adjust MIRs:** Increase or decrease the MIR for each user within allowable limits (MIR ≥ 1000 Kbps, sum of MIRs ≤ Remaining Bandwidth).
+- **Adjust MIRs:** Increase or decrease the MIR for each user within allowable limits ($MIR \geq 1000$ Kbps, sum of MIRs $\leq$ Remaining Bandwidth).
 
 ---
 
@@ -113,9 +113,7 @@ Implement the following allocation strategy at each time step **before** the RL 
 
 - **Calculate Remaining Bandwidth:**
 
-  $
-  \text{Remaining Bandwidth} = 10,000 \text{ Kbps} - \sum_{i=1}^{N} \text{Allocated}_{i,t}^{\text{Phase 1}}
-  $
+$$\text{Remaining Bandwidth} = 10,000 \text{ Kbps} - \sum_{i=1}^{N} \text{Allocated}_{i,t}^{\text{Phase 1}}$$
 
 - **RL Agent's Role:**
 
@@ -124,10 +122,10 @@ Implement the following allocation strategy at each time step **before** the RL 
 
 - **Constraints for RL Agent:**
 
-  - For each user $ i $:
+  - For each user $i$:
 
-    - **MIR $_{i,t}$ ≥ CIR (1000 Kbps)**
-    - **MIR $_{i,t}$ ≤ Remaining Bandwidth**
+    - $MIR_{i,t} \geq CIR (1000 \text{ Kbps})$
+    - $MIR_{i,t} \leq \text{Remaining Bandwidth}$
 
   - **Sum of MIRs across all users must not exceed the Remaining Bandwidth.**
 
@@ -135,9 +133,7 @@ Implement the following allocation strategy at each time step **before** the RL 
 
   - For each user, **Allocated Bandwidth** is:
 
-    $
-    \text{Allocated}_{i,t} = \text{Allocated}_{i,t}^{\text{Phase 1}} + \min \left( \text{Bandwidth Requested}_{i,t} - \text{Allocated}_{i,t}^{\text{Phase 1}},\ \text{MIR}_{i,t} - \text{Allocated}_{i,t}^{\text{Phase 1}} \right)
-    $
+$$\text{Allocated}_{i,t} = \text{Allocated}_{i,t}^{\text{Phase 1}} + \min \left( \text{Bandwidth Requested}_{i,t} - \text{Allocated}_{i,t}^{\text{Phase 1}},\ MIR_{i,t} - \text{Allocated}_{i,t}^{\text{Phase 1}} \right)$$
 
   - Ensure that **total allocated bandwidth** does not exceed **10,000 Kbps**.
 
@@ -170,7 +166,7 @@ Develop an RL agent that adjusts each user's MIR to optimize the allocation of t
 
 2. **Design the RL Agent:**
    - Ensure the agent learns to adjust MIRs based on the state.
-   - The MIR adjustments should be within the allowable range (MIR ≥ 1000 Kbps, sum of MIRs ≤ Remaining Bandwidth).
+   - The MIR adjustments should be within the allowable range ($MIR \geq 1000$ Kbps, sum of MIRs $\leq$ Remaining Bandwidth).
 
 3. **Implement Reward Function:**
    - Design the reward function as per the specifications, accurately capturing the objectives and penalties.
@@ -188,7 +184,7 @@ Develop an RL agent that adjusts each user's MIR to optimize the allocation of t
 
 #### **4.1. Objective: Maximize Average Allocation Ratio**
 
-At each time step, for each user $ i $:
+At each time step, for each user $i$:
 
 - **Goal:** Maximize the average allocation ratio over all users and time steps.
 
@@ -198,101 +194,79 @@ The **Allocation Ratio** is calculated differently based on the user's requested
 
 **Scenarios:**
 
-**a. If Requested Bandwidth ≥ MIR:**
+**a. If Requested Bandwidth $\geq$ MIR:**
 
 - **Allocated Bandwidth:**
 
-  $
-  \text{Allocated}_{i,t+1} = \text{MIR}_{i,t}
-  $
+$$\text{Allocated}_{i,t+1} = MIR_{i,t}$$
 
 - **Allocation Ratio:**
 
-  $
-  \text{Allocation Ratio}_{i,t} = \frac{\text{MIR}_{i,t}}{\text{Bandwidth Requested}_{i,t}}
-  $
+$$\text{Allocation Ratio}_{i,t} = \frac{MIR_{i,t}}{\text{Bandwidth Requested}_{i,t}}$$
 
-**b. If Requested Bandwidth < MIR:**
+**b. If Requested Bandwidth $<$ MIR:**
 
 - **Allocated Bandwidth:**
 
-  $
-  \text{Allocated}_{i,t+1} = \text{Bandwidth Requested}_{i,t}
-  $
+$$\text{Allocated}_{i,t+1} = \text{Bandwidth Requested}_{i,t}$$
 
 - **Allocation Ratio:**
 
-  $
-  \text{Allocation Ratio}_{i,t} = \frac{\text{Allocated}_{i,t}}{\text{Bandwidth Requested}_{i,t}} = 1
-  $
+$$\text{Allocation Ratio}_{i,t} = \frac{\text{Allocated}_{i,t}}{\text{Bandwidth Requested}_{i,t}} = 1$$
 
 **Considerations:**
 
 - **Total Allocations Must Not Exceed System Capacity:**
-  
-  $
-  \sum_{i=1}^{N} \text{Allocated}_{i,t} \leq 10,000 \text{ Kbps}
-  $
+
+$$\sum_{i=1}^{N} \text{Allocated}_{i,t} \leq 10,000 \text{ Kbps}$$
 
 - **Allocations Must Not Exceed MIRs:**
 
-  $
-  \text{Allocated}_{i,t} \leq \text{MIR}_{i,t}
-  $
+$$\text{Allocated}_{i,t} \leq MIR_{i,t}$$
 
 #### **4.2. Reward Function Components**
 
-**Total Reward at Each Time Step ($ R_t $):**
+**Total Reward at Each Time Step ($R_t$):**
 
-$
-R_t = R_{\text{efficiency}} - P_{\text{over}} - P_{\text{abusive}}
-$
+$$R_t = R_{\text{efficiency}} - P_{\text{over}} - P_{\text{abusive}}$$
 
 ---
 
 Below is a detailed description of the reward function:
 
-### **a. Bandwidth Allocation Efficiency Reward ($ R_{\text{efficiency}} $)**
+### **a. Bandwidth Allocation Efficiency Reward ($R_{\text{efficiency}}$)**
 
-We calculate $ R_{\text{efficiency}} $ as the **average efficiency across all users**.
+We calculate $R_{\text{efficiency}}$ as the **average efficiency across all users**.
 
-$
-R_{\text{efficiency}} = \frac{1}{N} \sum_{i=1}^{N} r_{i,t}
-$
+$$R_{\text{efficiency}} = \frac{1}{N} \sum_{i=1}^{N} r_{i,t}$$
 
-**Where $ r_{i,t} $ is the efficiency for user $ i $ at time $ t $, calculated as follows:**
+**Where $r_{i,t}$ is the efficiency for user $i$ at time $t$, calculated as follows:**
 
-- **If Requested Bandwidth ≥ MIR:**
+- **If Requested Bandwidth $\geq$ MIR:**
 
-  $
-  r_{i,t} = \frac{\text{MIR}_{i,t}}{\text{Bandwidth Requested}_{i,t}}
-  $
+$$r_{i,t} = \frac{MIR_{i,t}}{\text{Bandwidth Requested}_{i,t}}$$
 
-- **If Requested Bandwidth < MIR:**
+- **If Requested Bandwidth $<$ MIR:**
 
-  $
-  r_{i,t} = \frac{\text{Allocated}_{i,t}}{\text{Bandwidth Requested}_{i,t}} = 1
-  $
+$$r_{i,t} = \frac{\text{Allocated}_{i,t}}{\text{Bandwidth Requested}_{i,t}} = 1$$
 
 
 **Interpretation:**
 
-- **When Requested Bandwidth ≥ MIR:**
+- **When Requested Bandwidth $\geq$ MIR:**
 
   - The user's satisfaction is measured relative to the requested bandwidth.
 
-- **When Requested Bandwidth < MIR:**
-  - The user's request is fully satisfied, achieving $ r_{i,t} = 1 $.
+- **When Requested Bandwidth $<$ MIR:**
+  - The user's request is fully satisfied, achieving $r_{i,t} = 1$.
 
-### **b. Penalty for Over-Allocation of Total Bandwidth ($ P_{\text{over}} $)**
+### **b. Penalty for Over-Allocation of Total Bandwidth ($P_{\text{over}}$)**
 
-We calculate $ P_{\text{over}} $ based on the **total bandwidth over-allocation**, as a proportion of the maximum capacity.
+We calculate $P_{\text{over}}$ based on the **total bandwidth over-allocation**, as a proportion of the maximum capacity.
 
-$
-P_{\text{over}} = \beta \times \frac{\max\left(0,\ \sum_{i=1}^{N} \text{Allocated}_{i,t} - 10,000 \right)}{10,000}
-$
+$$P_{\text{over}} = \beta \times \frac{\max\left(0,\ \sum_{i=1}^{N} \text{Allocated}_{i,t} - 10,000 \right)}{10,000}$$
 
-- **Penalty Coefficient:** $ \beta = 3 $ (Can be finetuned if needed)
+- **Penalty Coefficient:** $\beta = 3$ (Can be finetuned if needed)
 
 **Interpretation:**
 
@@ -300,56 +274,48 @@ $
 - Ensures adherence to constraints by discouraging over-allocation of total bandwidth.
 - The penalty increases proportionally to the extent of the over-allocation.
 
-### **c. Penalty for Sustained Abusive Usage ($ P_{\text{abusive}} $)**
+### **c. Penalty for Sustained Abusive Usage ($P_{\text{abusive}}$)**
 
-We calculate $ P_{\text{abusive}} $ based on the **aggregate abuse score across all users**, normalized by the total possible abuse score.
+We calculate $P_{\text{abusive}}$ based on the **aggregate abuse score across all users**, normalized by the total possible abuse score.
 
 **Parameters:**
 
-- **Threshold Exceedance ($ \theta $)**: 20% (i.e., $ \theta = 0.2 $)
-- **Minimum Duration ($ \Delta t_{\text{min}} $)**: 3 consecutive time steps
-- **Penalty Coefficient:** $ \gamma = -0.5 $ (Can be fine-tuned if needed)
+- **Threshold Exceedance ($\theta$)**: 20% (i.e., $\theta = 0.2$)
+- **Minimum Duration ($\Delta t_{\text{min}}$)**: 3 consecutive time steps
+- **Penalty Coefficient:** $\gamma = -0.5$ (Can be fine-tuned if needed)
 
 **Abusive Usage Detection Procedure:**
 
-1. **For each user $ i $ and time step $ t $:**
+1. **For each user $i$ and time step $t$:**
 
    - **Condition:**
 
-     $
-     \text{Bandwidth Requested}_{i,t} > \text{MIR}_{i,t} \times (1 + \theta)
-     $
+$$\text{Bandwidth Requested}_{i,t} > MIR_{i,t} \times (1 + \theta)$$
 
-   - **Abuse Counter ($ C_i $):**
+   - **Abuse Counter ($C_i$):**
 
-     - **If condition is met:** Increment $ C_i $.
-     - **If condition is not met:** Reset $ C_i = 0 $.
+     - **If condition is met:** Increment $C_i$.
+     - **If condition is not met:** Reset $C_i = 0$.
 
 2. **Abusive Episode:**
 
-   - An abusive episode occurs when $ C_i \geq \Delta t_{\text{min}} $.
-   - **Duration ($ D_{i,j} $)**: The total consecutive time steps where the abuse condition persists **beyond** $ \Delta t_{\text{min}} $.
+   - An abusive episode occurs when $C_i \geq \Delta t_{\text{min}}$.
+   - **Duration ($D_{i,j}$)**: The total consecutive time steps where the abuse condition persists **beyond** $\Delta t_{\text{min}}$.
 
-3. **Calculate Abuse Score for User $ i $:**
+3. **Calculate Abuse Score for User $i$:**
 
-   $
-   S_i = \sum_{j} (D_{i,j} - \Delta t_{\text{min}})
-   $
+$$S_i = \sum_{j} (D_{i,j} - \Delta t_{\text{min}})$$
 
 4. **Aggregate Abuse Scores Across All Users:**
 
-   $
-   S_{\text{total}} = \sum_{i=1}^{N} S_i
-   $
+$$S_{\text{total}} = \sum_{i=1}^{N} S_i$$
 
 5. **Calculate Penalty:**
 
-   $
-   P_{\text{abusive}} = \gamma \times \frac{S_{\text{total}}}{N \times T}
-   $
+$$P_{\text{abusive}} = \gamma \times \frac{S_{\text{total}}}{N \times T}$$
 
-   - $ N $: Total number of users
-   - $ T $: Total number of time steps
+   - $N$: Total number of users
+   - $T$: Total number of time steps
 
 **Interpretation:**
 
@@ -460,9 +426,9 @@ Your submission will be evaluated on the following criteria:
 
 3. **Reward Function Implementation (20 points):**
    - Correct calculation of:
-     - $ R_{\text{efficiency}} $ (10 points)
-     - $ P_{\text{over}} $ (5 points)
-     - $ P_{\text{abusive}} $ (5 points)
+     - $R_{\text{efficiency}}$ (10 points)
+     - $P_{\text{over}}$ (5 points)
+     - $P_{\text{abusive}}$ (5 points)
 
 ---
 
@@ -482,9 +448,7 @@ Your submission will be evaluated on the following criteria:
 
 1. **Average Allocation Ratio (20 points):**
 
-   $
-   \text{Average Allocation Ratio} = \frac{1}{N \times T} \sum_{t=1}^{T} \sum_{i=1}^{N} \left( \text{Allocation Ratio}_{i,t} \right)
-   $
+$$\text{Average Allocation Ratio} = \frac{1}{N \times T} \sum_{t=1}^{T} \sum_{i=1}^{N} \left( \text{Allocation Ratio}_{i,t} \right)$$
 
    - **Scoring:**
 
@@ -504,8 +468,8 @@ Your submission will be evaluated on the following criteria:
 
    - **Managing Sustained Abusive Usage (5 points):**
      - Based on the total abuse score:
-       - $ S_{\text{total}} = 0 $ → **5 Points**
-       - $ S_{\text{total}} > 0 $ → **0 Points**
+       - $S_{\text{total}} = 0$ → **5 Points**
+       - $S_{\text{total}} > 0$ → **0 Points**
 
 ---
 
@@ -529,7 +493,7 @@ Your submission will be evaluated on the following criteria:
 - **Bandwidth Units:** All bandwidth values should be in Kbps for consistency.
 
 - **Abusive Usage Threshold:**
-  - Users are considered abusive if their requested bandwidth exceeds their MIR by more than **20%** (i.e., $ \text{Requested}_{i,t} > \text{MIR}_{i,t} \times 1.2 $) over at least **3 consecutive time steps**.
+  - Users are considered abusive if their requested bandwidth exceeds their MIR by more than **20%** (i.e., $\text{Requested}_{i,t} > MIR_{i,t} \times 1.2$) over at least **3 consecutive time steps**.
 
 - **Implementation Notes:**
   - Ensure that your code correctly handles edge cases, such as users requesting zero bandwidth.
@@ -561,7 +525,7 @@ Your submission will be evaluated on the following criteria:
 
 4. **Implement Reward Function:**
    - Implement the reward and penalty components accurately.
-   - Ensure proper handling of the parameters $ \beta, \gamma, \theta, \Delta t_{\text{min}} $.
+   - Ensure proper handling of the parameters $\beta, \gamma, \theta, \Delta t_{\text{min}}$.
 
 5. **Train and Test:**
    - Use the training data to train your agent.
